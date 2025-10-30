@@ -1,0 +1,6 @@
+{
+  "id": "fullstack",
+  "title": "Fullstack Engineer - Service API and Architecture",
+  "description": "Build a dockerized microservice app with a gateway that exposes users, tasks and stats APIs. Grader runs pytest requests against your running stack.",
+  "type": "fullstack"
+}

@@ -1,0 +1,6 @@
+{
+  "id": "qa-cancer",
+  "title": "QA Engineer - Cancer Analysis Portal E2E",
+  "description": "Write Playwright automation for a provided portal. Grader runs your tests against a reference UI.",
+  "type": "qa"
+}

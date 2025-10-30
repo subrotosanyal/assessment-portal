@@ -1,0 +1,6 @@
+{
+  "id": "infrastructure-design",
+  "title": "DevSecOps Engineer - System Design - Cost Tracking & Multi-Tenancy for a SaaS",
+  "description": "Design a system architecture for fine-grain cost tracking per customer and multi-tenancy for a SaaS platform. Submit either a PDF or PowerPoint containing your design.",
+  "type": "DevSecOps"
+}

@@ -1,0 +1,39 @@
+/* Global CSS to make text and media non-selectable/draggable by default.
+   Inputs and textareas will be re-enabled by the JS helper so users can type. */
+html, body, #root, * {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-drag: none !important;
+}
+
+img, video {
+  pointer-events: none !important;
+  -webkit-user-drag: none !important;
+  user-drag: none !important;
+}
+
+/* Allow form controls to remain usable */
+input, textarea, select, button {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  pointer-events: auto !important;
+}
+
+/* Small helper to discourage screenshots via CSS (does not prevent OS-level screenshots) */
+.no-screenshot {
+  -webkit-backdrop-filter: blur(0px);
+}
+
+/* Markdown body niceties */
+.markdown-body {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.markdown-body p { margin: 0 0 0.75rem 0; }
+.markdown-body h1, .markdown-body h2, .markdown-body h3 { margin-top: 1rem; margin-bottom: 0.5rem; }
+.markdown-body pre { margin: 0.5rem 0; }
+.markdown-body code { background: rgba(135,131,120,0.12); padding: 0.15rem 0.3rem; border-radius: 4px; }
+.markdown-body img { max-width: 100%; height: auto; pointer-events: none; }

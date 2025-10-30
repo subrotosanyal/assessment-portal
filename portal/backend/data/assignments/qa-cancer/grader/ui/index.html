@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Cancer Analysis Portal</title>
+    <style>
+      :root {
+        --primary: #2a6f97;
+        --primary-hover: #468faf;
+        --background: #f7f9fb;
+        --border: #d0d7de;
+        --error: #c1121f;
+        --text-dark: #222;
+      }
+
+      body {
+        font-family: "Segoe UI", Roboto, sans-serif;
+        background: var(--background);
+        margin: 0;
+        padding: 2rem;
+        display: flex;
+        justify-content: center;
+      }
+
+      main {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        padding: 2rem 2.5rem;
+        max-width: 600px;
+        width: 100%;
+      }
+
+      h1 {
+        text-align: center;
+        color: var(--primary);
+        margin-bottom: 1.5rem;
+      }
+
+      label {
+        display: block;
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-top: 1rem;
+        margin-bottom: 0.3rem;
+      }
+
+      input[type="text"],
+      input[type="number"],
+      input[type="file"] {
+        width: 100%;
+        padding: 0.6rem 0.8rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 1rem;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      input:focus {
+        border-color: var(--primary);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(42, 111, 151, 0.2);
+      }
+
+      button {
+        display: inline-block;
+        margin-top: 1.5rem;
+        background-color: var(--primary);
+        color: #fff;
+        font-weight: 600;
+        font-size: 1rem;
+        padding: 0.8rem 1.2rem;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+      }
+
+      button:hover {
+        background-color: var(--primary-hover);
+      }
+
+      .error {
+        color: var(--error);
+        margin-top: 0.5rem;
+        font-size: 0.95rem;
+      }
+
+      .result {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #fafafa;
+        padding: 1rem;
+        margin-top: 1.5rem;
+        display: none;
+      }
+
+      .result p {
+        margin: 0;
+        color: var(--text-dark);
+      }
+
+      .result a {
+        color: var(--primary);
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .result a:hover {
+        text-decoration: underline;
+      }
+
+      footer {
+        margin-top: 2rem;
+        text-align: center;
+        font-size: 0.85rem;
+        color: #777;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Cancer Analysis Portal</h1>
+
+      <label>Patient Name <input id="name" type="text" /></label>
+      <label>Age <input id="age" type="number" /></label>
+      <label>Image <input id="img" type="file" accept=".jpg,.jpeg,.png" /></label>
+
+      <button id="run">Run Analysis</button>
+
+      <div id="error" class="error" role="alert"></div>
+
+      <div id="result" class="result">
+        <p>Analysis complete. <a id="pdf" href="#">Download PDF</a></p>
+      </div>
+
+      <footer>&copy; 2025 Cancer Analysis Portal. All rights reserved.</footer>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
