@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 
-export type Role = 'evaluator' | 'creator'
+export type Role = 'evaluator' | 'creator' | 'candidate'
 
 type RoleContextValue = {
   role: Role
@@ -13,7 +13,7 @@ const defaultRole: Role = 'evaluator'
 export function RoleProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<Role>(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('portal-role') : null
-    if (saved === 'creator' || saved === 'evaluator') return saved
+    if (saved === 'creator' || saved === 'evaluator' || saved === 'candidate') return saved
     return defaultRole
   })
 
@@ -33,5 +33,6 @@ export function useRole() {
 
 export const ROLE_OPTIONS: { label: string; value: Role; helper?: string }[] = [
   { label: 'Evaluator', value: 'evaluator', helper: 'Grade and view submissions' },
-  { label: 'Assignment creator', value: 'creator', helper: 'Manage and publish assignments' }
+  { label: 'Assignment creator', value: 'creator', helper: 'Manage and publish assignments' },
+  { label: 'Candidate', value: 'candidate', helper: 'Draft a solution with in-browser editor' }
 ]

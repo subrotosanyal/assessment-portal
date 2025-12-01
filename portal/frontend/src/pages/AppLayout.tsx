@@ -8,11 +8,11 @@ export default function AppLayout() {
   const navigate = useNavigate()
 
   return (
-    <Container maxW="6xl" py={6}>
+    <Container maxW="14xl" py={6}>
       <Flex align={{ base: 'flex-start', md: 'center' }} justify="space-between" gap={4} mb={6} flexDir={{ base: 'column', md: 'row' }}>
         <Box>
           <Heading size="lg">Assessment Portal</Heading>
-          <Text color="gray.500" fontSize="sm">Role-aware console for grading and authoring</Text>
+          <Text color="gray.500" fontSize="sm">Role-aware console for grading, authoring, and drafting solutions</Text>
         </Box>
         <HStack spacing={3}>
           <Tooltip label="Go back to assignments">

@@ -6,6 +6,7 @@ import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
 import { spawn } from "child_process";
+import archiver from "archiver";
 
 const app = express();
 const server = http.createServer(app);
@@ -225,7 +226,7 @@ app.post("/api/assignments/:id/grade", (req, res) => {
   const cfg = readConfig(id);
   if (!cfg) return res.status(404).json({ error: "Assignment not found" });
   if (cfg.enabled === false) return res.status(403).json({ error: "Assignment disabled" });
-  if (!file) return res.status(400).json({ error: "file is required" });
+  if (!file || typeof file !== "string") return res.status(400).json({ error: "file is required and must be a string path" });
 
   const submissionId = `${id}-${Date.now()}`;
   // Put extracted submission next to the uploaded file (it lives inside a date-hour folder)
@@ -252,6 +253,53 @@ app.post("/api/assignments/:id/grade", (req, res) => {
   });
 
   res.json({ status: "started", submissionId, resultPath: publicResultPath });
+});
+
+/* ---------- Candidate: Build workspace archive ---------- */
+app.post("/api/candidate/archive", async (req, res) => {
+  try {
+    const { assignmentId, files } = req.body || {};
+    if (!Array.isArray(files) || files.length === 0) {
+      return res.status(400).json({ error: "files array is required" });
+    }
+    const hourDir = path.join(SUBMISSIONS_BASE, getDateHour());
+    ensureDir(hourDir);
+    const baseName = `${safeId(assignmentId || "candidate")}-${Date.now()}`;
+    const workspaceDir = path.join(hourDir, baseName);
+    ensureDir(workspaceDir);
+
+    for (const f of files) {
+      const rel = String(f?.path || f?.name || "").trim();
+      if (!rel || rel.includes("..") || path.isAbsolute(rel)) continue;
+      const target = path.join(workspaceDir, rel);
+      const resolved = path.resolve(target);
+      if (!resolved.startsWith(path.resolve(workspaceDir))) continue;
+      ensureDir(path.dirname(target));
+      fs.writeFileSync(target, f.content ?? "");
+    }
+
+    const zipPath = path.join(hourDir, `${baseName}.zip`);
+    await new Promise((resolve, reject) => {
+      const output = fs.createWriteStream(zipPath);
+      const archive = archiver("zip", { zlib: { level: 9 } });
+
+      output.on("close", resolve);
+      archive.on("warning", (err) => {
+        if (err.code === "ENOENT") console.warn(err);
+        else reject(err);
+      });
+      archive.on("error", reject);
+
+      archive.pipe(output);
+      archive.directory(workspaceDir, false);
+      archive.finalize();
+    });
+
+    res.json({ ok: true, path: zipPath, name: `${baseName}.zip` });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Could not create archive", detail: e?.message });
+  }
 });
 
 /* ---------- Build grader image and run grading ---------- */

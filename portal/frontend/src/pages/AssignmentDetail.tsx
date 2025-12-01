@@ -7,11 +7,14 @@ import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
 import rehypeHighlight from 'rehype-highlight'
 import { API_BASE, SOCKET_URL } from '../config'
+import { useRole } from '../role'
+import CandidateWorkspace from '../components/CandidateWorkspace'
 
 const socket = io(SOCKET_URL)
 
 export default function AssignmentDetail() {
   const { id } = useParams()
+  const { role } = useRole()
   const [docs, setDocs] = useState('')
   const [title, setTitle] = useState('')
   const [type, setType] = useState('')
@@ -66,8 +69,15 @@ export default function AssignmentDetail() {
       fd.append('submission', file)
       const res = await fetch(`${API_BASE}/api/assignments/${id}/upload`, { method: 'POST', body: fd })
       const data = await res.json()
-      setUploadedPath(data.path)
-      toast({ title: 'Upload complete', status: 'info' })
+      if (!res.ok) {
+        throw new Error(data?.error || 'Upload failed')
+      }
+      const resolvedPath = data?.path || data?.file || data?.uploadedPath
+      if (!resolvedPath) {
+        throw new Error('Upload succeeded but no path returned from server')
+      }
+      setUploadedPath(String(resolvedPath))
+      toast({ title: 'Upload complete', description: resolvedPath, status: 'info' })
     } catch (e:any) {
       toast({ title: 'Upload failed', status: 'error', description: e?.message })
     } finally {
@@ -75,8 +85,17 @@ export default function AssignmentDetail() {
     }
   }
 
-  const run = async () => {
-    if (!uploadedPath) { toast({ title: 'Upload a zip first', status: 'warning' }); return; }
+  const normalizePath = (p: any) => {
+    if (!p) return ''
+    if (typeof p === 'string') return p
+    if (typeof p === 'object' && typeof p.path === 'string') return p.path
+    return ''
+  }
+
+  const run = async (pathOverride?: any) => {
+    const path = normalizePath(pathOverride || uploadedPath)
+    if (!path) { toast({ title: 'Upload a zip first', status: 'warning' }); return; }
+    const safePath = String(path)
     setRunLoading(true)
     setLogs('')
     setOpen(true)
@@ -85,7 +104,7 @@ export default function AssignmentDetail() {
       await fetch(`${API_BASE}/api/assignments/${id}/grade`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file: uploadedPath, socketId: socket.id })
+        body: JSON.stringify({ file: safePath, socketId: socket.id })
       })
     } catch (e:any) {
       toast({ title: 'Could not start grader', status: 'error', description: e?.message })
@@ -172,10 +191,20 @@ export default function AssignmentDetail() {
         </Box>
       </Box>
 
+      {role === 'candidate' && id && (
+        <CandidateWorkspace
+          assignmentId={id}
+          onArchiveReady={(path) => setUploadedPath(path)}
+          onVerify={(path) => run(path)}
+          verifyLoading={runLoading}
+        />
+      )}
+
       <VStack align="stretch" spacing={3} mb={4}>
         <Input type="file" accept=".zip" onChange={(e) => setFile(e.target.files?.[0] || null)} isDisabled={disabledActions} />
         <Button colorScheme="blue" onClick={upload} isDisabled={disabledActions || uploadLoading} isLoading={uploadLoading} loadingText="Uploading...">Upload</Button>
-        <Button colorScheme="green" onClick={run} isDisabled={disabledActions || runLoading} isLoading={runLoading} loadingText="Grading...">Run grader</Button>
+        {uploadedPath && <Text fontSize="sm" color="gray.600">Uploaded archive: {uploadedPath}</Text>}
+        <Button colorScheme="green" onClick={() => run()} isDisabled={disabledActions || runLoading} isLoading={runLoading} loadingText="Grading...">Run grader</Button>
       </VStack>
 
       <Collapse in={open}>

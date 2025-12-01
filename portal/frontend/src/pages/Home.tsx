@@ -12,10 +12,18 @@ export default function Home() {
         <CreatorDashboard />
       ) : (
         <>
-          <Alert status="info" mb={4} borderRadius="md">
-            <AlertIcon />
-            <AlertDescription>Evaluator view shows only enabled assignments</AlertDescription>
-          </Alert>
+          {role === 'evaluator' && (
+            <Alert status="info" mb={4} borderRadius="md">
+              <AlertIcon />
+              <AlertDescription>Evaluator view shows only enabled assignments</AlertDescription>
+            </Alert>
+          )}
+          {role === 'candidate' && (
+            <Alert status="info" mb={4} borderRadius="md">
+              <AlertIcon />
+              <AlertDescription>Candidate view adds an in-browser workspace to draft and verify your submission.</AlertDescription>
+            </Alert>
+          )}
           <Assignments />
         </>
       )}

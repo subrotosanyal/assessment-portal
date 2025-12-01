@@ -8,3 +8,11 @@
 .markdown-body pre { margin: 0.5rem 0; }
 .markdown-body code { background: rgba(135,131,120,0.12); padding: 0.15rem 0.3rem; border-radius: 4px; }
 .markdown-body img { max-width: 100%; height: auto; pointer-events: none; }
+.app-root {
+  width: 100%;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
