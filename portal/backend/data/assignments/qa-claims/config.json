@@ -1,0 +1,7 @@
+{
+  "id": "qa-claims",
+  "title": "QA Engineer - Claims Intake Portal",
+  "description": "Write Playwright tests and QA artifacts for a claims intake UI with validations and result summary.",
+  "type": "qa",
+  "enabled": true
+}

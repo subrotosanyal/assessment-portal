@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claims Intake Portal</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #0b1021; color: #f2f4ff; margin: 0; padding: 24px; }
+    .card { max-width: 780px; margin: 0 auto; background: #11162b; border: 1px solid #1f2b4a; border-radius: 12px; padding: 24px; box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+    label { display: block; margin: 10px 0 6px; font-weight: bold; }
+    input, select, textarea, button { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #243357; background: #0f1527; color: #f2f4ff; }
+    textarea { min-height: 120px; resize: vertical; }
+    button { background: #5b8def; border: none; cursor: pointer; font-weight: bold; letter-spacing: 0.3px; }
+    button:hover { background: #4a7adc; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+    .error { color: #f98e8e; margin-top: 6px; font-size: 0.9rem; }
+    #errors { background: rgba(249,142,142,0.08); border: 1px solid rgba(249,142,142,0.4); padding: 12px; border-radius: 10px; display: none; margin-top: 12px; }
+    #summary { display: none; margin-top: 20px; padding: 16px; border-radius: 10px; background: rgba(91, 141, 239, 0.12); border: 1px solid #3a5aa0; }
+    #summary code { background: rgba(255,255,255,0.06); padding: 4px 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Claims Intake Portal</h1>
+    <p>Enter claim details, attach evidence, and run automated checks.</p>
+
+    <div class="grid">
+      <div>
+        <label for="claimId">Claim ID (6 digits)</label>
+        <input id="claimId" placeholder="e.g., 123456" maxlength="6" />
+      </div>
+      <div>
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="casey@example.com" />
+      </div>
+      <div>
+        <label for="date">Incident Date</label>
+        <input id="date" type="date" />
+      </div>
+      <div>
+        <label for="type">Incident Type</label>
+        <select id="type">
+          <option value="">Select one</option>
+          <option>Property</option>
+          <option>Medical</option>
+          <option>Travel</option>
+        </select>
+      </div>
+    </div>
+
+    <label for="desc">Description (min 20 characters)</label>
+    <textarea id="desc" placeholder="Describe the incident with enough detail for adjusters"></textarea>
+
+    <label for="evidence">Evidence (PDF)</label>
+    <input id="evidence" type="file" accept="application/pdf,.pdf" />
+
+    <div id="errors"></div>
+
+    <button id="run">Run Checks</button>
+
+    <div id="summary">
+      <h3>Summary</h3>
+      <p><strong>Claim Token:</strong> <code id="token"></code></p>
+      <p><strong>Email:</strong> <span id="sumEmail"></span></p>
+      <p><strong>Type:</strong> <span id="sumType"></span></p>
+      <p><strong>Date:</strong> <span id="sumDate"></span></p>
+      <p><strong>Description:</strong> <span id="sumDesc"></span></p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
