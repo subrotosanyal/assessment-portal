@@ -100,6 +100,30 @@ else
   echo "[SCORE] No test plan (0)."
 fi
 
+BUG_REPORT_POINTS=0
+for FILE in "$S/bug-report.md" "$S/defect-report.md"; do
+  if [ -f "$FILE" ]; then
+    BUG_REPORT_POINTS=10
+    echo "[SCORE] Bug/defect report found (+10)."
+    break
+  fi
+done
+if [ "$BUG_REPORT_POINTS" -eq 0 ]; then
+  echo "[SCORE] No bug report (0)."
+fi
+
+EXPLORATION_POINTS=0
+for FILE in "$S/exploratory-notes.md" "$S/qa-notes.md"; do
+  if [ -f "$FILE" ]; then
+    EXPLORATION_POINTS=10
+    echo "[SCORE] Exploratory notes found (+10)."
+    break
+  fi
+done
+if [ "$EXPLORATION_POINTS" -eq 0 ]; then
+  echo "[SCORE] No exploratory notes (0)."
+fi
+
 PLAY_JSON="$O/playwright.json"
 PASSED=0
 TOTAL=0
@@ -129,7 +153,7 @@ fi
 PASSED=${PASSED:-0}
 TOTAL=${TOTAL:-0}
 if [ "$TOTAL" -gt 0 ]; then
-  TEST_POINTS=$(( PASSED * 80 / TOTAL ))
+  TEST_POINTS=$(( PASSED * 60 / TOTAL ))
 else
   TEST_POINTS=0
 fi
@@ -140,8 +164,8 @@ COVERAGE_DIR="/workspace/output/v8-coverage"
 if [ -d "$COVERAGE_DIR" ]; then
   FILE_COUNT=$(find "$COVERAGE_DIR" -type f -name '*.json' | wc -l)
   if [ "$FILE_COUNT" -gt 0 ]; then
-    COVER_POINTS=20
-    echo "[SCORE] Coverage data found (+20)."
+    COVER_POINTS=10
+    echo "[SCORE] Coverage data found (+10)."
   else
     echo "[INFO] No coverage files found."
   fi
@@ -149,7 +173,7 @@ else
   echo "[INFO] No coverage directory found."
 fi
 
-SCORE=$(( PLAN_POINTS + TEST_POINTS + COVER_POINTS ))
+SCORE=$(( PLAN_POINTS + BUG_REPORT_POINTS + EXPLORATION_POINTS + TEST_POINTS + COVER_POINTS ))
 if [ "$SCORE" -gt 100 ]; then SCORE=100; fi
 
 # --- Collect screenshots ---
@@ -174,10 +198,12 @@ cat > "$O/result.json" <<EOF
   "score": $SCORE,
   "sections": [
     { "name": "Test Plan", "score": $PLAN_POINTS, "max": 20 },
-    { "name": "Playwright Tests", "score": $TEST_POINTS, "max": 80 },
-    { "name": "Coverage", "score": $COVER_POINTS, "max": 20 }
+    { "name": "Bug Report", "score": $BUG_REPORT_POINTS, "max": 10 },
+    { "name": "Exploratory Notes", "score": $EXPLORATION_POINTS, "max": 10 },
+    { "name": "Playwright Tests", "score": $TEST_POINTS, "max": 60 },
+    { "name": "Coverage", "score": $COVER_POINTS, "max": 10 }
   ],
-  "feedback": "$PASSED of $TOTAL tests passed. Coverage: $COVER_POINTS points."
+  "feedback": "$PASSED of $TOTAL tests passed. Coverage: $COVER_POINTS/10. Bug report: $BUG_REPORT_POINTS/10. Exploratory notes: $EXPLORATION_POINTS/10."
 }
 EOF
 

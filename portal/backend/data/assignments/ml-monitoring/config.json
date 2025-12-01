@@ -1,0 +1,7 @@
+{
+  "id": "ml-monitoring",
+  "title": "ML Engineer - Drift & Monitoring Toolkit",
+  "description": "Build a service that ingests prediction events and exposes drift/quality metrics with alerts.",
+  "type": "ml",
+  "enabled": true
+}

@@ -1,0 +1,13 @@
+{
+  "prediction_mean": 0.5,
+  "prediction_std": 0.15,
+  "prediction_histogram": [
+    { "bin": [0.0, 0.2], "prob": 0.15 },
+    { "bin": [0.2, 0.4], "prob": 0.25 },
+    { "bin": [0.4, 0.6], "prob": 0.3 },
+    { "bin": [0.6, 0.8], "prob": 0.2 },
+    { "bin": [0.8, 1.0], "prob": 0.1 }
+  ],
+  "feature_means": [0.2, -0.05, 0.5],
+  "feature_stds": [0.1, 0.2, 0.15]
+}

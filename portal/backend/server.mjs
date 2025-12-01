@@ -13,12 +13,14 @@ const io = new Server(server, { cors: { origin: "*" } });
 
 const DATA_DIR = "/app/data";
 const ASSIGNMENTS_DIR = path.join(DATA_DIR, "assignments");
+const TMP_DIR = path.join(DATA_DIR, "tmp");
 // Keep base folders; actual submission/result directories are timestamped per hour
 const SUBMISSIONS_BASE = path.join(DATA_DIR, "submissions");
 const RESULTS_BASE = path.join(DATA_DIR, "results");
 
 fs.mkdirSync(SUBMISSIONS_BASE, { recursive: true });
 fs.mkdirSync(RESULTS_BASE, { recursive: true });
+fs.mkdirSync(TMP_DIR, { recursive: true });
 
 // Helper: return YYYY-MM-DD-HH (24h) string for current time
 function getDateHour(ts = Date.now()) {
@@ -32,6 +34,38 @@ function getDateHour(ts = Date.now()) {
 
 function ensureDir(p) {
   fs.mkdirSync(p, { recursive: true });
+}
+
+function readConfig(id) {
+  const cfgPath = path.join(ASSIGNMENTS_DIR, id, "config.json");
+  if (!fs.existsSync(cfgPath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(cfgPath, "utf8"));
+  } catch (e) {
+    return null;
+  }
+}
+
+function writeConfig(id, cfg) {
+  const cfgPath = path.join(ASSIGNMENTS_DIR, id, "config.json");
+  ensureDir(path.dirname(cfgPath));
+  fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
+}
+
+function safeId(str = "") {
+  return str.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+function unzipTo(zipPath, dest) {
+  return new Promise((resolve, reject) => {
+    ensureDir(dest);
+    const unzip = spawn("unzip", ["-o", zipPath, "-d", dest]);
+    unzip.on("close", (code) => {
+      if (code !== 0) return reject(new Error(`unzip failed with code ${code}`));
+      resolve();
+    });
+    unzip.on("error", reject);
+  });
 }
 
 app.use(cors());
@@ -58,6 +92,7 @@ app.get("/api/assignments", (req, res) => {
       title: cfg.title,
       description: cfg.description,
       type: cfg.type,
+      enabled: cfg.enabled !== false,
       hasDocs: fs.existsSync(path.join(ASSIGNMENTS_DIR, d.name, "docs/instructions.md"))
     };
   }).filter(Boolean);
@@ -70,6 +105,95 @@ app.get("/api/assignments/:id/docs", (req, res) => {
   if (!fs.existsSync(mdPath)) return res.status(404).send("Docs not found");
   res.setHeader("Content-Type", "text/markdown");
   res.send(fs.readFileSync(mdPath, "utf8"));
+});
+
+/* ---------- Admin: Create/enable/disable/delete assignments ---------- */
+const creatorUpload = multer({
+  storage: multer.diskStorage({
+    destination: TMP_DIR,
+    filename: (req, file, cb) => cb(null, `${Date.now()}-${safeId(file.originalname)}`)
+  })
+});
+
+app.post("/api/assignments", creatorUpload.fields([
+  { name: "package", maxCount: 1 },
+  { name: "instructionsFile", maxCount: 1 },
+  { name: "graderZip", maxCount: 1 },
+  { name: "assetsZip", maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const meta = JSON.parse(req.body.metadata || "{}");
+    const id = safeId(meta.id || "");
+    if (!id || !meta.title || !meta.description || !meta.type) {
+      return res.status(400).json({ error: "id, title, description, and type are required" });
+    }
+    const targetDir = path.join(ASSIGNMENTS_DIR, id);
+    if (fs.existsSync(targetDir)) return res.status(409).json({ error: "Assignment already exists" });
+
+    ensureDir(targetDir);
+
+    const pkg = req.files?.package?.[0];
+    if (pkg) {
+      await unzipTo(pkg.path, targetDir);
+    }
+
+    const cfg = {
+      id,
+      title: meta.title,
+      description: meta.description,
+      type: meta.type,
+      enabled: meta.enabled !== false,
+      createdAt: meta.createdAt || new Date().toISOString()
+    };
+    writeConfig(id, cfg);
+
+    const docsDir = path.join(targetDir, "docs");
+    ensureDir(docsDir);
+    if (req.body.instructions || req.files?.instructionsFile?.[0]) {
+      const md = req.body.instructions || fs.readFileSync(req.files.instructionsFile[0].path, "utf8");
+      fs.writeFileSync(path.join(docsDir, "instructions.md"), md);
+    }
+
+    if (req.files?.graderZip?.[0]) {
+      const graderDir = path.join(targetDir, "grader");
+      fs.rmSync(graderDir, { recursive: true, force: true });
+      await unzipTo(req.files.graderZip[0].path, graderDir);
+    }
+
+    if (req.files?.assetsZip?.[0]) {
+      const assetsDir = path.join(docsDir, "assets");
+      fs.rmSync(assetsDir, { recursive: true, force: true });
+      await unzipTo(req.files.assetsZip[0].path, assetsDir);
+    }
+
+    // Cleanup temp uploads
+    [req.files?.package, req.files?.instructionsFile, req.files?.graderZip, req.files?.assetsZip].forEach(arr => {
+      if (Array.isArray(arr)) arr.forEach(f => fs.rmSync(f.path, { force: true }));
+    });
+
+    res.status(201).json({ ok: true, id });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Failed to create assignment", detail: e?.message });
+  }
+});
+
+app.patch("/api/assignments/:id/enabled", (req, res) => {
+  const id = req.params.id;
+  const cfg = readConfig(id);
+  if (!cfg) return res.status(404).json({ error: "Not found" });
+  if (typeof req.body.enabled !== "boolean") return res.status(400).json({ error: "enabled must be boolean" });
+  cfg.enabled = req.body.enabled;
+  writeConfig(id, cfg);
+  res.json({ ok: true, enabled: cfg.enabled });
+});
+
+app.delete("/api/assignments/:id", (req, res) => {
+  const id = req.params.id;
+  const dir = path.join(ASSIGNMENTS_DIR, id);
+  if (!fs.existsSync(dir)) return res.status(404).json({ error: "Not found" });
+  fs.rmSync(dir, { recursive: true, force: true });
+  res.json({ ok: true });
 });
 
 /* ---------- Upload submissions ---------- */
@@ -88,6 +212,9 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 app.post("/api/assignments/:id/upload", upload.single("submission"), (req, res) => {
+  const cfg = readConfig(req.params.id);
+  if (!cfg) return res.status(404).json({ error: "Assignment not found" });
+  if (cfg.enabled === false) return res.status(403).json({ error: "Assignment disabled" });
   res.json({ ok: true, path: req.file.path });
 });
 
@@ -95,6 +222,9 @@ app.post("/api/assignments/:id/upload", upload.single("submission"), (req, res) 
 app.post("/api/assignments/:id/grade", (req, res) => {
   const id = req.params.id;
   const { file, socketId } = req.body || {};
+  const cfg = readConfig(id);
+  if (!cfg) return res.status(404).json({ error: "Assignment not found" });
+  if (cfg.enabled === false) return res.status(403).json({ error: "Assignment disabled" });
   if (!file) return res.status(400).json({ error: "file is required" });
 
   const submissionId = `${id}-${Date.now()}`;

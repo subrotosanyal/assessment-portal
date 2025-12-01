@@ -1,7 +1,7 @@
 # QA Engineer Assignment
 
 ## Problem
-You will test a small cancer tissue analysis portal UI that we provide in the grader. Your job is to write a test plan and Playwright tests that validate the behavior of the portal.
+You will test a small cancer tissue analysis portal UI that we provide in the grader. Your job is to write a test plan, create a concise defect log, capture exploratory QA notes, and write Playwright tests that validate the behavior of the portal.
 
 ## Provided UI (by grader)
 The UI is started by the grader on http://localhost:8085. It has these behaviors:
@@ -16,7 +16,9 @@ The UI is started by the grader on http://localhost:8085. It has these behaviors
 ## What to submit
 A ZIP with:
 ```
-testplan.md
+testplan.md                     # test strategy and prioritization
+bug-report.md                   # defects you find; include severity + repro steps
+exploratory-notes.md            # charter(s), environment, and observations
 tests/
   portal.spec.ts
   sample-data/
@@ -26,6 +28,8 @@ tests/
 Notes:
 - Your tests must navigate to http://localhost:8085/.
 - Use Playwright test runner.
+- For `bug-report.md`, list each defect with: id, area, severity, steps, expected vs actual.
+- For `exploratory-notes.md`, capture at least one charter, the data you used, and the observations/risks you would follow up on.
 
 ## How grading works
 The grader will:
@@ -47,9 +51,13 @@ The grader will:
     },
 });
 ```
-5. Count passing tests and compute a score. It will also check for presence of testplan.md.
+5. Look for `testplan.md`, `bug-report.md`, and `exploratory-notes.md` at the zip root.
+6. Count passing tests and compute a score. Coverage is collected automatically via the injected fixture.
 
 ## Scoring
-- Presence of testplan.md: 20 points.
-- Playwright tests: each passing test is worth 10 points. Up to 8 tests counted.
+- Test plan present: 20 points.
+- Bug report present: 10 points.
+- Exploratory notes present: 10 points.
+- Playwright tests: weighted to 60 points total (distributed across the number of tests you have).
+- Coverage artifacts generated: 10 points.
 - Total score capped at 100.

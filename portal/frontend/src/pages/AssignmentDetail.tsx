@@ -1,18 +1,21 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
-import { Box, Heading, Text, Button, Input, VStack, Collapse, Textarea, useToast, Code } from '@chakra-ui/react'
+import { Box, Heading, Text, Button, Input, VStack, Collapse, Textarea, useToast, Code, Badge, HStack, Alert, AlertIcon, AlertDescription } from '@chakra-ui/react'
 import { io } from 'socket.io-client'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
 import rehypeHighlight from 'rehype-highlight'
+import { API_BASE, SOCKET_URL } from '../config'
 
-const socket = io('http://localhost:4000')
+const socket = io(SOCKET_URL)
 
 export default function AssignmentDetail() {
   const { id } = useParams()
   const [docs, setDocs] = useState('')
   const [title, setTitle] = useState('')
+  const [type, setType] = useState('')
+  const [enabled, setEnabled] = useState(true)
   const mdRef = useRef<HTMLDivElement | null>(null)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [file, setFile] = useState<File | null>(null)
@@ -20,21 +23,25 @@ export default function AssignmentDetail() {
   const [logs, setLogs] = useState('')
   const [open, setOpen] = useState(false)
   const [result, setResult] = useState<any>(null)
+  const [uploadLoading, setUploadLoading] = useState(false)
+  const [runLoading, setRunLoading] = useState(false)
   const toast = useToast()
 
   useEffect(() => {
     // Fetch assignment docs
-    fetch(`http://localhost:4000/api/assignments/${id}/docs`).then(async r => {
+    fetch(`${API_BASE}/api/assignments/${id}/docs`).then(async r => {
       if (r.ok) setDocs(await r.text())
     })
 
     // Fetch assignments list to get the title for this id
-    fetch('http://localhost:4000/api/assignments').then(async r => {
+    fetch(`${API_BASE}/api/assignments`).then(async r => {
       if (!r.ok) return
       try {
         const items = await r.json()
         const item = items.find((it:any) => it.id === id)
         if (item && item.title) setTitle(item.title)
+        if (item && item.type) setType(item.type)
+        if (item) setEnabled(item.enabled !== false)
       } catch (e) {
         // ignore
       }
@@ -44,30 +51,46 @@ export default function AssignmentDetail() {
   useEffect(() => {
     socket.on('log', (msg) => setLogs(prev => prev + msg))
     socket.on('result', (r) => setResult(r))
-    socket.on('done', () => toast({ title: 'Grading finished', status: 'success' }))
+    socket.on('done', () => {
+      setRunLoading(false)
+      toast({ title: 'Grading finished', status: 'success' })
+    })
     return () => { socket.off('log'); socket.off('result'); socket.off('done'); }
   }, [])
 
   const upload = async () => {
     if (!file) return
-    const fd = new FormData()
-    fd.append('submission', file)
-    const res = await fetch(`http://localhost:4000/api/assignments/${id}/upload`, { method: 'POST', body: fd })
-    const data = await res.json()
-    setUploadedPath(data.path)
-    toast({ title: 'Upload complete', status: 'info' })
+    setUploadLoading(true)
+    try {
+      const fd = new FormData()
+      fd.append('submission', file)
+      const res = await fetch(`${API_BASE}/api/assignments/${id}/upload`, { method: 'POST', body: fd })
+      const data = await res.json()
+      setUploadedPath(data.path)
+      toast({ title: 'Upload complete', status: 'info' })
+    } catch (e:any) {
+      toast({ title: 'Upload failed', status: 'error', description: e?.message })
+    } finally {
+      setUploadLoading(false)
+    }
   }
 
   const run = async () => {
     if (!uploadedPath) { toast({ title: 'Upload a zip first', status: 'warning' }); return; }
+    setRunLoading(true)
     setLogs('')
     setOpen(true)
     setResult(null)
-    await fetch(`http://localhost:4000/api/assignments/${id}/grade`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file: uploadedPath, socketId: socket.id })
-    })
+    try {
+      await fetch(`${API_BASE}/api/assignments/${id}/grade`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file: uploadedPath, socketId: socket.id })
+      })
+    } catch (e:any) {
+      toast({ title: 'Could not start grader', status: 'error', description: e?.message })
+      setRunLoading(false)
+    }
   }
 
   const downloadPdf = async () => {
@@ -97,9 +120,27 @@ export default function AssignmentDetail() {
     }
   }
 
+  const disabledActions = enabled === false
+
+  const titleBlock = useMemo(() => (
+    <HStack align="center" spacing={3} mb={2}>
+      <Heading size="lg">{title || id}</Heading>
+      {type && <Badge colorScheme="purple" fontSize="0.85em">{type}</Badge>}
+      {!enabled && (
+        <Badge colorScheme="red" variant="outline">Disabled</Badge>
+      )}
+    </HStack>
+  ), [title, id, type, enabled])
+
   return (
     <Box py={8}>
-  <Heading mb={4}>{title || id}</Heading>
+      {titleBlock}
+      {!enabled && (
+        <Alert status="warning" mb={4} borderRadius="md">
+          <AlertIcon />
+          <AlertDescription>This assignment is currently disabled. You can still preview instructions.</AlertDescription>
+        </Alert>
+      )}
       <Box mb={6} p={4} borderWidth="1px" rounded="md">
         <Heading size="sm">Instructions</Heading>
         <Box textAlign="right" mb={2}>
@@ -132,9 +173,9 @@ export default function AssignmentDetail() {
       </Box>
 
       <VStack align="stretch" spacing={3} mb={4}>
-        <Input type="file" accept=".zip" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-        <Button colorScheme="blue" onClick={upload}>Upload</Button>
-        <Button colorScheme="green" onClick={run}>Run grader</Button>
+        <Input type="file" accept=".zip" onChange={(e) => setFile(e.target.files?.[0] || null)} isDisabled={disabledActions} />
+        <Button colorScheme="blue" onClick={upload} isDisabled={disabledActions || uploadLoading} isLoading={uploadLoading} loadingText="Uploading...">Upload</Button>
+        <Button colorScheme="green" onClick={run} isDisabled={disabledActions || runLoading} isLoading={runLoading} loadingText="Grading...">Run grader</Button>
       </VStack>
 
       <Collapse in={open}>
