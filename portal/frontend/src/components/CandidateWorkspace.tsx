@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Badge, Box, Button, Divider, Flex, HStack, IconButton, Input, Stack, Tag, Text, Textarea, VStack, useToast
+  Badge, Box, Button, Divider, Flex, HStack, IconButton, Input, Stack, Tag, Text, VStack, useToast
 } from '@chakra-ui/react'
 import { AddIcon, AttachmentIcon, CheckIcon, DeleteIcon, HamburgerIcon } from '@chakra-ui/icons'
 import JSZip from 'jszip'
 import { API_BASE } from '../config'
+import type * as monacoType from 'monaco-editor'
+import 'monaco-editor/min/vs/editor/editor.main.css'
+
+type MonacoModule = typeof import('monaco-editor/esm/vs/editor/editor.api')
 
 type FileEntry = { path: string; content: string }
 
@@ -23,6 +27,71 @@ function normalizePath(raw: string) {
   return raw.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '').trim()
 }
 
+const languageLoaders: Record<string, (monaco: MonacoModule) => Promise<void>> = {
+  python: async (monaco) => {
+    const mod = await import('monaco-editor/esm/vs/basic-languages/python/python')
+    monaco.languages.register({ id: 'python' })
+    monaco.languages.setMonarchTokensProvider('python', mod.language)
+    monaco.languages.setLanguageConfiguration('python', mod.conf)
+  },
+  java: async (monaco) => {
+    const mod = await import('monaco-editor/esm/vs/basic-languages/java/java')
+    monaco.languages.register({ id: 'java' })
+    monaco.languages.setMonarchTokensProvider('java', mod.language)
+    monaco.languages.setLanguageConfiguration('java', mod.conf)
+  },
+  csharp: async (monaco) => {
+    const mod = await import('monaco-editor/esm/vs/basic-languages/csharp/csharp')
+    monaco.languages.register({ id: 'csharp' })
+    monaco.languages.setMonarchTokensProvider('csharp', mod.language)
+    monaco.languages.setLanguageConfiguration('csharp', mod.conf)
+  },
+  cpp: async (monaco) => {
+    const mod = await import('monaco-editor/esm/vs/basic-languages/cpp/cpp')
+    monaco.languages.register({ id: 'cpp' })
+    monaco.languages.setMonarchTokensProvider('cpp', mod.language)
+    monaco.languages.setLanguageConfiguration('cpp', mod.conf)
+  },
+  go: async (monaco) => {
+    const mod = await import('monaco-editor/esm/vs/basic-languages/go/go')
+    monaco.languages.register({ id: 'go' })
+    monaco.languages.setMonarchTokensProvider('go', mod.language)
+    monaco.languages.setLanguageConfiguration('go', mod.conf)
+  },
+  sql: async (monaco) => {
+    const mod = await import('monaco-editor/esm/vs/basic-languages/sql/sql')
+    monaco.languages.register({ id: 'sql' })
+    monaco.languages.setMonarchTokensProvider('sql', mod.language)
+    monaco.languages.setLanguageConfiguration('sql', mod.conf)
+  },
+  yaml: async (monaco) => {
+    const mod = await import('monaco-editor/esm/vs/basic-languages/yaml/yaml')
+    monaco.languages.register({ id: 'yaml' })
+    monaco.languages.setMonarchTokensProvider('yaml', mod.language)
+    monaco.languages.setLanguageConfiguration('yaml', mod.conf)
+  },
+  shell: async (monaco) => {
+    const mod = await import('monaco-editor/esm/vs/basic-languages/shell/shell')
+    monaco.languages.register({ id: 'shell' })
+    monaco.languages.setMonarchTokensProvider('shell', mod.language)
+    monaco.languages.setLanguageConfiguration('shell', mod.conf)
+  },
+  php: async (monaco) => {
+    const mod = await import('monaco-editor/esm/vs/basic-languages/php/php')
+    monaco.languages.register({ id: 'php' })
+    monaco.languages.setMonarchTokensProvider('php', mod.language)
+    monaco.languages.setLanguageConfiguration('php', mod.conf)
+  },
+  ruby: async (monaco) => {
+    const mod = await import('monaco-editor/esm/vs/basic-languages/ruby/ruby')
+    monaco.languages.register({ id: 'ruby' })
+    monaco.languages.setMonarchTokensProvider('ruby', mod.language)
+    monaco.languages.setLanguageConfiguration('ruby', mod.conf)
+  }
+}
+
+const languagePromises: Record<string, Promise<void>> = {}
+
 export default function CandidateWorkspace({ assignmentId, onArchiveReady, onVerify, verifyLoading }: Props) {
   const [files, setFiles] = useState<FileEntry[]>(starterFiles)
   const [folders, setFolders] = useState<string[]>([''])
@@ -38,9 +107,12 @@ export default function CandidateWorkspace({ assignmentId, onArchiveReady, onVer
   const toast = useToast()
   const tsModule = useRef<any>(null)
   const importRef = useRef<HTMLInputElement | null>(null)
+  const editorRef = useRef<monacoType.editor.IStandaloneCodeEditor | null>(null)
+  const monacoRef = useRef<MonacoModule | null>(null)
+  const modelsRef = useRef<Record<string, monacoType.editor.ITextModel>>({})
+  const editorElRef = useRef<HTMLDivElement | null>(null)
 
   const current = useMemo(() => files.find(f => f.path === selected), [files, selected])
-  const lineNumbers = useMemo(() => (current?.content || '').split('\n').map((_, i) => i + 1), [current?.content])
 
   useEffect(() => {
     if (!files.length) {
@@ -119,6 +191,37 @@ export default function CandidateWorkspace({ assignmentId, onArchiveReady, onVer
     runSyntax(path, content)
   }
 
+  const languageFromPath = (path?: string) => {
+    if (!path) return 'plaintext'
+    const lower = path.toLowerCase()
+    if (lower.endsWith('.ts') || lower.endsWith('.tsx')) return 'typescript'
+    if (lower.endsWith('.js') || lower.endsWith('.jsx')) return 'javascript'
+    if (lower.endsWith('.json')) return 'json'
+    if (lower.endsWith('.md') || lower.endsWith('.markdown')) return 'markdown'
+    if (lower.endsWith('.css') || lower.endsWith('.scss')) return 'css'
+    if (lower.endsWith('.html') || lower.endsWith('.htm')) return 'html'
+    if (lower.endsWith('.py')) return 'python'
+    if (lower.endsWith('.java')) return 'java'
+    if (lower.endsWith('.cs')) return 'csharp'
+    if (lower.endsWith('.cpp') || lower.endsWith('.cc') || lower.endsWith('.cxx') || lower.endsWith('.hpp')) return 'cpp'
+    if (lower.endsWith('.go')) return 'go'
+    if (lower.endsWith('.sql')) return 'sql'
+    if (lower.endsWith('.yml') || lower.endsWith('.yaml')) return 'yaml'
+    if (lower.endsWith('.sh') || lower.endsWith('.bash')) return 'shell'
+    if (lower.endsWith('.php')) return 'php'
+    if (lower.endsWith('.rb')) return 'ruby'
+    return 'plaintext'
+  }
+
+  const ensureLanguage = async (lang: string, monaco: MonacoModule) => {
+    const registered = monaco.languages.getLanguages().some(l => l.id === lang)
+    if (registered) return
+    if (!languagePromises[lang] && languageLoaders[lang]) {
+      languagePromises[lang] = languageLoaders[lang](monaco)
+    }
+    await (languagePromises[lang] || Promise.resolve())
+  }
+
   const loadTs = async () => {
     if (!tsModule.current) {
       tsModule.current = await import('typescript')
@@ -167,6 +270,93 @@ export default function CandidateWorkspace({ assignmentId, onArchiveReady, onVer
     if (current) runSyntax(current.path, current.content)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected])
+
+  useEffect(() => {
+    if (!monacoRef.current) return
+    const monaco = monacoRef.current
+    const keep = new Set(files.map(f => f.path))
+    Object.entries(modelsRef.current).forEach(([path, model]) => {
+      if (!keep.has(path)) {
+        model.dispose()
+        delete modelsRef.current[path]
+      }
+    })
+  }, [files])
+
+  useEffect(() => {
+    let disposed = false
+    const load = async () => {
+      if (!monacoRef.current) {
+        monacoRef.current = await import('monaco-editor/esm/vs/editor/editor.api')
+      }
+      const monaco = monacoRef.current
+      if (!editorElRef.current || disposed) return
+      const instance = monaco.editor.create(editorElRef.current, {
+        value: current?.content || '',
+        language: languageFromPath(current?.path),
+        theme: 'vs',
+        minimap: { enabled: false },
+        automaticLayout: true,
+        fontSize: 14,
+        scrollBeyondLastLine: false
+      })
+      editorRef.current = instance
+
+      instance.onDidChangeModelContent(() => {
+        const model = instance.getModel()
+        if (!model) return
+        const value = model.getValue()
+        const path = model.uri.path.replace(/^\//, '')
+        setContent(path, value)
+      })
+    }
+    load()
+    return () => {
+      disposed = true
+      editorRef.current?.dispose()
+      Object.values(modelsRef.current).forEach(m => m.dispose())
+      modelsRef.current = {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    const applyModel = async () => {
+      const monaco = monacoRef.current
+      const editor = editorRef.current
+      if (!monaco || !editor) return
+      if (!current) {
+        const blankKey = '__blank__'
+        if (!modelsRef.current[blankKey]) {
+          modelsRef.current[blankKey] = monaco.editor.createModel('', 'plaintext')
+        }
+        editor.setModel(modelsRef.current[blankKey])
+        return
+      }
+
+      const lang = languageFromPath(current.path)
+      await ensureLanguage(lang, monaco)
+
+      const existingModel = modelsRef.current[current.path] || monaco.editor.createModel(
+        current.content || '',
+        lang,
+        monaco.Uri.parse(`file:///${current.path}`)
+      )
+      modelsRef.current[current.path] = existingModel
+      const editorModel = editor.getModel()
+      if (editorModel !== existingModel) {
+        editor.setModel(existingModel)
+      }
+      const editorValue = existingModel.getValue()
+      if (editorValue !== (current.content || '')) {
+        existingModel.setValue(current.content || '')
+      }
+      if (existingModel.getLanguageId && existingModel.getLanguageId() !== lang) {
+        monaco.editor.setModelLanguage(existingModel, lang)
+      }
+    }
+    applyModel()
+  }, [current?.path, current?.content])
 
   const importZip = async (file: File) => {
     setImporting(true)
@@ -307,20 +497,9 @@ export default function CandidateWorkspace({ assignmentId, onArchiveReady, onVer
               </Badge>
             )}
           </HStack>
-          <Flex borderWidth="1px" rounded="md" overflow="hidden" bg="white" minH="260px">
-            <Box w="52px" bg="gray.100" color="gray.600" textAlign="right" pr={2} pl={1} borderRight="1px solid #e2e8f0" fontFamily="monospace" fontSize="sm">
-              {lineNumbers.map(n => <Text key={n} lineHeight="1.6">{n}</Text>)}
-            </Box>
-            <Textarea
-              value={current?.content || ''}
-              onChange={(e) => current && setContent(current.path, e.target.value)}
-              minH="260px"
-              fontFamily="monospace"
-              resize="vertical"
-              border="none"
-              _focus={{ boxShadow: 'none' }}
-            />
-          </Flex>
+          <Box borderWidth="1px" rounded="md" overflow="hidden" bg="white" minH="320px">
+            <Box ref={editorElRef} h={{ base: '55vh', md: '65vh' }} minH="320px" />
+          </Box>
           {syntax[current?.path || '']?.status === 'error' && (
             <Text mt={2} color="red.500" fontSize="sm">{syntax[current!.path].message}</Text>
           )}

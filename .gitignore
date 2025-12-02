@@ -4,3 +4,4 @@ portal/backend/data/submissions/
 portal/frontend/node_modules/
 portal/frontend/node_modules/*/
 
+portal/frontend/dist/*

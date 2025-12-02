@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
-import { Box, Heading, Text, Button, Input, VStack, Collapse, Textarea, useToast, Code, Badge, HStack, Alert, AlertIcon, AlertDescription } from '@chakra-ui/react'
+import { Box, Heading, Text, Button, Input, VStack, Collapse, Textarea, useToast, Code, Badge, HStack, Alert, AlertIcon, AlertDescription, Flex } from '@chakra-ui/react'
 import { io } from 'socket.io-client'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -9,6 +9,7 @@ import rehypeHighlight from 'rehype-highlight'
 import { API_BASE, SOCKET_URL } from '../config'
 import { useRole } from '../role'
 import CandidateWorkspace from '../components/CandidateWorkspace'
+import { ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons'
 
 const socket = io(SOCKET_URL)
 
@@ -25,6 +26,7 @@ export default function AssignmentDetail() {
   const [uploadedPath, setUploadedPath] = useState<string>('')
   const [logs, setLogs] = useState('')
   const [open, setOpen] = useState(false)
+  const [instructionsOpen, setInstructionsOpen] = useState(true)
   const [result, setResult] = useState<any>(null)
   const [uploadLoading, setUploadLoading] = useState(false)
   const [runLoading, setRunLoading] = useState(false)
@@ -161,34 +163,46 @@ export default function AssignmentDetail() {
         </Alert>
       )}
       <Box mb={6} p={4} borderWidth="1px" rounded="md">
-        <Heading size="sm">Instructions</Heading>
-        <Box textAlign="right" mb={2}>
-          <Button size="sm" colorScheme="purple" onClick={downloadPdf} isLoading={pdfLoading}>Download PDF</Button>
-        </Box>
-        <Box mt={3} className="markdown-body" ref={mdRef}>
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeSanitize, rehypeHighlight]}
-            components={{
-              h1: ({node, ...props}) => <Heading as="h1" size="lg" my={4} {...props} />,
-              h2: ({node, ...props}) => <Heading as="h2" size="md" my={3} {...props} />,
-              h3: ({node, ...props}) => <Heading as="h3" size="sm" my={2} {...props} />,
-              p: ({node, ...props}) => <Text mt={2} {...props} />,
-              code: ({node, inline, className, children, ...props}) => {
-                if (inline) return <Code {...props} fontSize="0.85em">{children}</Code>
-                return (
-                  <Box as="pre" bg="gray.800" color="green.200" p={3} rounded="md" overflowX="auto">
-                    <code className={className} {...props}>{children}</code>
-                  </Box>
-                )
-              },
-              a: ({node, ...props}) => <Text as="a" color="blue.400" {...props} />,
-              li: ({node, ...props}) => <Box as="li" ml={4} {...props} />
-            }}
-          >
-            {docs || ''}
-          </ReactMarkdown>
-        </Box>
+        <Flex align="center" justify="space-between" gap={3} flexWrap="wrap">
+          <Heading size="sm">Instructions</Heading>
+          <HStack spacing={2}>
+            <Button
+              size="sm"
+              variant="ghost"
+              leftIcon={instructionsOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+              onClick={() => setInstructionsOpen((v) => !v)}
+            >
+              {instructionsOpen ? 'Hide' : 'Show'}
+            </Button>
+            <Button size="sm" colorScheme="purple" onClick={downloadPdf} isLoading={pdfLoading}>Download PDF</Button>
+          </HStack>
+        </Flex>
+        <Collapse in={instructionsOpen} animateOpacity>
+          <Box mt={3} className="markdown-body" ref={mdRef}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeSanitize, rehypeHighlight]}
+              components={{
+                h1: ({node, ...props}) => <Heading as="h1" size="lg" my={4} {...props} />,
+                h2: ({node, ...props}) => <Heading as="h2" size="md" my={3} {...props} />,
+                h3: ({node, ...props}) => <Heading as="h3" size="sm" my={2} {...props} />,
+                p: ({node, ...props}) => <Text mt={2} {...props} />,
+                code: ({node, inline, className, children, ...props}) => {
+                  if (inline) return <Code {...props} fontSize="0.85em">{children}</Code>
+                  return (
+                    <Box as="pre" bg="gray.800" color="green.200" p={3} rounded="md" overflowX="auto">
+                      <code className={className} {...props}>{children}</code>
+                    </Box>
+                  )
+                },
+                a: ({node, ...props}) => <Text as="a" color="blue.400" {...props} />,
+                li: ({node, ...props}) => <Box as="li" ml={4} {...props} />
+              }}
+            >
+              {docs || ''}
+            </ReactMarkdown>
+          </Box>
+        </Collapse>
       </Box>
 
       {role === 'candidate' && id && (
